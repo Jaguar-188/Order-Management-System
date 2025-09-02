@@ -2,6 +2,7 @@ package com.example.haveIt.entity.models;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.util.Objects;
 
@@ -10,15 +11,19 @@ public class Items {
 
     @Id
     private String id;
+
+    private String itemId;
     private String name;
-    private String price;
-    private String quantity;
+    private double price;
+    @Field(value = "availableStock")
+    private int quantity;
 
     public Items() {
     }
 
-    public Items(String id, String name, String price, String quantity) {
+    public Items(String id, String itemId,String name, double price, int quantity) {
         this.id = id;
+        this.itemId = itemId;
         this.name = name;
         this.price = price;
         this.quantity = quantity;
@@ -40,20 +45,28 @@ public class Items {
         this.name = name;
     }
 
-    public String getPrice() {
+    public double getPrice() {
         return price;
     }
 
-    public void setPrice(String price) {
+    public void setPrice(double price) {
         this.price = price;
     }
 
-    public String getQuantity() {
+    public int getQuantity() {
         return quantity;
     }
 
-    public void setQuantity(String quantity) {
+    public void setQuantity(int quantity) {
         this.quantity = quantity;
+    }
+
+    public String getItemId() {
+        return itemId;
+    }
+
+    public void setItemId(String itemId) {
+        this.itemId = itemId;
     }
 
     @Override
@@ -61,18 +74,19 @@ public class Items {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Items items = (Items) o;
-        return Objects.equals(id, items.id) && Objects.equals(name, items.name) && Objects.equals(price, items.price) && Objects.equals(quantity, items.quantity);
+        return Objects.equals(id, items.id) && Objects.equals(itemId, items.itemId) && Objects.equals(name, items.name) && Objects.equals(price, items.price) && Objects.equals(quantity, items.quantity);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, name, price, quantity);
+        return Objects.hash(id, itemId, name, price, quantity);
     }
 
     @Override
     public String toString() {
         return "Items{" +
                 "id='" + id + '\'' +
+                ", itemId='" + itemId + '\'' +
                 ", name='" + name + '\'' +
                 ", price='" + price + '\'' +
                 ", quantity='" + quantity + '\'' +
