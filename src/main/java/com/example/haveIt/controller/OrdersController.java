@@ -1,6 +1,5 @@
 package com.example.haveIt.controller;
 
-import com.example.haveIt.constants.OrderStatus;
 import com.example.haveIt.entity.models.Order;
 import com.example.haveIt.service.OrderService;
 import com.example.haveIt.utils.Logging;

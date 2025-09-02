@@ -3,7 +3,6 @@ package com.example.haveIt.service;
 import com.example.haveIt.constants.Constants;
 import com.example.haveIt.constants.OrderStatus;
 import com.example.haveIt.entity.exception.CustomerNotFoundException;
-import com.example.haveIt.entity.exception.ItemNotFoundException;
 import com.example.haveIt.entity.exception.OrderNotFoundException;
 import com.example.haveIt.entity.models.Customer;
 import com.example.haveIt.entity.models.Items;
