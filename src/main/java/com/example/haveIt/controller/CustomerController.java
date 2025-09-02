@@ -29,13 +29,12 @@ public class CustomerController {
             description = "The endpoint creates the customer with provided data in application.",
             method = "POST",
             responses = {@ApiResponse(responseCode = "201",
-                    description = "Ok",
+                    description = "CREATED",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = Customer.class))),
                     @ApiResponse(responseCode = "400",
                             description = "Bad Request",
                             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Error.class)))})
     public Customer createCustomer(@RequestBody Customer customer){
-
 
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
@@ -47,7 +46,7 @@ public class CustomerController {
         return customerResponse;
     }
 
-    @DeleteMapping("/removeCustomer")
+    @DeleteMapping("/removeCustomer/{customerId}")
     @Operation(summary = "The endpoint removes the customer.",
             description = "The endpoint removes the customer with provided data from application.",
             method = "DELETE",
@@ -57,8 +56,7 @@ public class CustomerController {
                     @ApiResponse(responseCode = "400",
                             description = "Bad Request",
                             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Error.class)))})
-    public String removeCustomer(@RequestParam String customerId){
-
+    public String removeCustomer(@PathVariable String customerId){
 
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
@@ -83,7 +81,6 @@ public class CustomerController {
                             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Error.class)))})
     public Customer getCustomerDetails(@RequestParam String customerId){
 
-
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
         log.info("Retrieving customer with customer id : " + customerId);
@@ -107,7 +104,6 @@ public class CustomerController {
                             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Error.class)))})
     public Customer updateCustomer(@RequestBody Customer customer){
 
-
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
         log.info("Updating customer with customer id : " + customer.getCustomerId());
@@ -118,7 +114,4 @@ public class CustomerController {
 
         return customerResponse;
     }
-
-
-
 }
