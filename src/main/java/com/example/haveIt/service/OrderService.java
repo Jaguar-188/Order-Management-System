@@ -3,6 +3,7 @@ package com.example.haveIt.service;
 import com.example.haveIt.constants.Constants;
 import com.example.haveIt.constants.OrderStatus;
 import com.example.haveIt.entity.exception.CustomerNotFoundException;
+import com.example.haveIt.entity.exception.NotEnoughStockForItemException;
 import com.example.haveIt.entity.exception.OrderNotFoundException;
 import com.example.haveIt.entity.models.Customer;
 import com.example.haveIt.entity.models.Items;
@@ -13,10 +14,8 @@ import com.example.haveIt.repository.OrdersRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class OrderService {
@@ -24,6 +23,9 @@ public class OrderService {
     private ItemsRepository itemsRepository;
     private OrdersRepository ordersRepository;
     private CustomerRepository customerRepository;
+
+    private final Map<String, Object> customerLocks = new ConcurrentHashMap<>();
+    private final Map<String, Object> itemsLocks = new ConcurrentHashMap<>();
 
     public OrderService(ItemsRepository itemsRepository, OrdersRepository ordersRepository, CustomerRepository customerRepository) {
         this.itemsRepository = itemsRepository;
@@ -33,32 +35,43 @@ public class OrderService {
 
     public Order createOrder(Order order) {
 
-        double finalPrice = 0.0;
-        int finalQuantity = 0;
-        List<Items> itemsList = new ArrayList<>();
-        for(Items items: order.getItems())
-        {
-            Items itemToBeReturned = new Items();
-            Items item = itemsRepository.findByItemId(items.getItemId());
-            finalPrice = finalPrice + item.getPrice() * items.getQuantity();
-            finalQuantity = finalQuantity + items.getQuantity();
-            item.setQuantity(item.getQuantity() - items.getQuantity());
-            itemToBeReturned.setId(items.getId());
-            itemToBeReturned.setItemId(items.getItemId());
-            itemToBeReturned.setQuantity(items.getQuantity());
-            itemToBeReturned.setPrice(item.getPrice() * items.getQuantity());
-            itemToBeReturned.setName(items.getName());
-            itemsRepository.save(item);
-            itemsList.add(itemToBeReturned);
+        //Provided double lock on customer as well as on item
+        Object lock1 = customerLocks.computeIfAbsent(order.getCustomerId(),k -> new Object());
+        synchronized (lock1){
+
+            double finalPrice = 0.0;
+            int finalQuantity = 0;
+            List<Items> itemsList = new ArrayList<>();
+            for(Items items: order.getItems())
+            {
+                Object lock2 = itemsLocks.computeIfAbsent(items.getItemId(),k -> new Object());
+                synchronized (lock2){
+                    Items itemToBeReturned = new Items();
+                    Items item = itemsRepository.findByItemId(items.getItemId());
+                    if(item.getQuantity() < items.getQuantity()){
+                        throw new NotEnoughStockForItemException("Not Enough stock For Item is Present");
+                    }
+                    finalPrice = finalPrice + item.getPrice() * items.getQuantity();
+                    finalQuantity = finalQuantity + items.getQuantity();
+                    item.setQuantity(item.getQuantity() - items.getQuantity());
+                    itemToBeReturned.setId(items.getId());
+                    itemToBeReturned.setItemId(items.getItemId());
+                    itemToBeReturned.setQuantity(items.getQuantity());
+                    itemToBeReturned.setPrice(item.getPrice() * items.getQuantity());
+                    itemToBeReturned.setName(items.getName());
+                    itemsRepository.save(item);
+                    itemsList.add(itemToBeReturned);
+                }
+            }
+            order.setItems(itemsList);
+            order.setId(UUID.randomUUID().toString());
+            order.setOrderId(Constants.Order + "-"+ UUID.randomUUID());
+            order.setTime(LocalDate.now().toString());
+            order.setQuantity(finalQuantity);
+            order.setPrice(finalPrice);
+            order.setStatus(String.valueOf(OrderStatus.CONFIRMED));
+            return ordersRepository.save(order);
         }
-        order.setItems(itemsList);
-        order.setId(UUID.randomUUID().toString());
-        order.setOrderId(Constants.Order + "-"+ UUID.randomUUID());
-        order.setTime(LocalDate.now().toString());
-        order.setQuantity(finalQuantity);
-        order.setPrice(finalPrice);
-        order.setStatus(String.valueOf(OrderStatus.CONFIRMED));
-        return ordersRepository.save(order);
     }
 
     public Order removeOrder(String orderId) {
