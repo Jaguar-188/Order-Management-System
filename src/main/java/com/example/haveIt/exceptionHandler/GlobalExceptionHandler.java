@@ -78,4 +78,20 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
         return new ResponseEntity<>(exceptionMessage,HttpStatus.NOT_FOUND);
     }
+
+    @ExceptionHandler(NotEnoughStockForItemException.class)
+    protected ResponseEntity<ExceptionMessage> NotEnoughStockForItemExceptionHandler(NotEnoughStockForItemException notEnoughStockForItemException,
+                                                                             WebRequest webRequest){
+
+        log.error("Resolving not enough stock for item exception");
+        ExceptionMessage exceptionMessage = new ExceptionMessage(
+                notEnoughStockForItemException.getMessage(),
+                webRequest.getDescription(false).replace("uri="," "),
+                String.valueOf(HttpStatus.UNAVAILABLE_FOR_LEGAL_REASONS),
+                String.valueOf(HttpStatus.UNAVAILABLE_FOR_LEGAL_REASONS).substring(0,3),
+                LocalDateTime.now()
+        );
+
+        return new ResponseEntity<>(exceptionMessage,HttpStatus.UNAVAILABLE_FOR_LEGAL_REASONS);
+    }
 }
