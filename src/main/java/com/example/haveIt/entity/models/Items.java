@@ -1,6 +1,8 @@
 package com.example.haveIt.entity.models;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -11,7 +13,7 @@ public class Items {
 
     @Id
     private String id;
-
+    @Indexed(unique = true)
     private String itemId;
     private String name;
     private double price;
@@ -21,7 +23,7 @@ public class Items {
     public Items() {
     }
 
-    public Items(String id, String itemId,String name, double price, int quantity) {
+    public Items(String id, String itemId, String name, double price, int quantity) {
         this.id = id;
         this.itemId = itemId;
         this.name = name;
@@ -35,6 +37,14 @@ public class Items {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public String getItemId() {
+        return itemId;
+    }
+
+    public void setItemId(String itemId) {
+        this.itemId = itemId;
     }
 
     public String getName() {
@@ -61,20 +71,12 @@ public class Items {
         this.quantity = quantity;
     }
 
-    public String getItemId() {
-        return itemId;
-    }
-
-    public void setItemId(String itemId) {
-        this.itemId = itemId;
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Items items = (Items) o;
-        return Objects.equals(id, items.id) && Objects.equals(itemId, items.itemId) && Objects.equals(name, items.name) && Objects.equals(price, items.price) && Objects.equals(quantity, items.quantity);
+        return Double.compare(items.price, price) == 0 && quantity == items.quantity && Objects.equals(id, items.id) && Objects.equals(itemId, items.itemId) && Objects.equals(name, items.name);
     }
 
     @Override
@@ -88,8 +90,8 @@ public class Items {
                 "id='" + id + '\'' +
                 ", itemId='" + itemId + '\'' +
                 ", name='" + name + '\'' +
-                ", price='" + price + '\'' +
-                ", quantity='" + quantity + '\'' +
+                ", price=" + price +
+                ", quantity=" + quantity +
                 '}';
     }
 }

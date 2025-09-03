@@ -1,6 +1,7 @@
 package com.example.haveIt.entity.models;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Objects;
@@ -10,6 +11,7 @@ public class Customer {
 
     @Id
     private String id;
+    @Indexed(unique = true)
     private String customerId;
     private String name;
     private String email;
