@@ -3,10 +3,8 @@ package com.example.haveIt.service;
 import com.example.haveIt.constants.Constants;
 import com.example.haveIt.constants.OrderStatus;
 import com.example.haveIt.entity.exception.CustomerNotFoundException;
-import com.example.haveIt.entity.exception.NotEnoughStockForItemException;
 import com.example.haveIt.entity.exception.OrderNotFoundException;
 import com.example.haveIt.entity.models.Customer;
-import com.example.haveIt.entity.models.Items;
 import com.example.haveIt.entity.models.Order;
 import com.example.haveIt.repository.CustomerRepository;
 import com.example.haveIt.repository.ItemsRepository;
@@ -23,53 +21,34 @@ public class OrderService {
     private ItemsRepository itemsRepository;
     private OrdersRepository ordersRepository;
     private CustomerRepository customerRepository;
+    private OrderProcessingService orderProcessingService;
 
     private final Map<String, Object> customerLocks = new ConcurrentHashMap<>();
-    private final Map<String, Object> itemsLocks = new ConcurrentHashMap<>();
 
-    public OrderService(ItemsRepository itemsRepository, OrdersRepository ordersRepository, CustomerRepository customerRepository) {
+    public OrderService(ItemsRepository itemsRepository,
+                        OrdersRepository ordersRepository,
+                        CustomerRepository customerRepository,
+                        OrderProcessingService orderProcessingService) {
         this.itemsRepository = itemsRepository;
         this.ordersRepository = ordersRepository;
         this.customerRepository = customerRepository;
+        this.orderProcessingService = orderProcessingService;
     }
 
-    public Order createOrder(Order order) {
+    public Order createOrder(Order order) throws InterruptedException{
 
         //Provided double lock on customer as well as on item
-        Object lock1 = customerLocks.computeIfAbsent(order.getCustomerId(),k -> new Object());
-        synchronized (lock1){
+        Object lock = customerLocks.computeIfAbsent(order.getCustomerId(),k -> new Object());
+        synchronized (lock){
 
-            double finalPrice = 0.0;
-            int finalQuantity = 0;
-            List<Items> itemsList = new ArrayList<>();
-            for(Items items: order.getItems())
-            {
-                Object lock2 = itemsLocks.computeIfAbsent(items.getItemId(),k -> new Object());
-                synchronized (lock2){
-                    Items itemToBeReturned = new Items();
-                    Items item = itemsRepository.findByItemId(items.getItemId());
-                    if(item.getQuantity() < items.getQuantity()){
-                        throw new NotEnoughStockForItemException("Not Enough stock For Item is Present");
-                    }
-                    finalPrice = finalPrice + item.getPrice() * items.getQuantity();
-                    finalQuantity = finalQuantity + items.getQuantity();
-                    item.setQuantity(item.getQuantity() - items.getQuantity());
-                    itemToBeReturned.setId(items.getId());
-                    itemToBeReturned.setItemId(items.getItemId());
-                    itemToBeReturned.setQuantity(items.getQuantity());
-                    itemToBeReturned.setPrice(item.getPrice() * items.getQuantity());
-                    itemToBeReturned.setName(items.getName());
-                    itemsRepository.save(item);
-                    itemsList.add(itemToBeReturned);
-                }
-            }
-            order.setItems(itemsList);
             order.setId(UUID.randomUUID().toString());
             order.setOrderId(Constants.Order + "-"+ UUID.randomUUID());
             order.setTime(LocalDate.now().toString());
-            order.setQuantity(finalQuantity);
-            order.setPrice(finalPrice);
-            order.setStatus(String.valueOf(OrderStatus.CONFIRMED));
+            order.setStatus(String.valueOf(OrderStatus.PENDING));
+            Order pendingOrderResponse = ordersRepository.save(order);
+
+            orderProcessingService.processOrder(pendingOrderResponse.getOrderId(),order);
+
             return ordersRepository.save(order);
         }
     }
