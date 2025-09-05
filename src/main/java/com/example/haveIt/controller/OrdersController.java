@@ -39,11 +39,15 @@ public class OrdersController {
                             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Error.class)))})
     public Order createOrder(@RequestBody Order order){
 
-
+        Order orderResponse = new Order();
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
         log.info("Creating order with customerId : " + order.getCustomerId());
-        Order orderResponse = orderService.createOrder(order);
+        try{
+            orderResponse = orderService.createOrder(order);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
         stopWatch.stop();
         log.info("Total time taken to create order with customer id : "
                 + orderResponse.getCustomerId() + " is : " + stopWatch.getTotalTimeSeconds());
