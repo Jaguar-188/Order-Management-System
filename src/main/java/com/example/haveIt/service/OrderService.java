@@ -35,7 +35,7 @@ public class OrderService {
         this.orderProcessingService = orderProcessingService;
     }
 
-    public Order createOrder(Order order) throws InterruptedException{
+    public Order createOrder(Order order) throws InterruptedException {
 
         //Provided double lock on customer as well as on item
         Object lock = customerLocks.computeIfAbsent(order.getCustomerId(),k -> new Object());

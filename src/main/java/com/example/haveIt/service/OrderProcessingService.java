@@ -6,6 +6,7 @@ import com.example.haveIt.entity.models.Order;
 import com.example.haveIt.repository.CustomerRepository;
 import com.example.haveIt.repository.ItemsRepository;
 import com.example.haveIt.repository.OrdersRepository;
+import com.example.haveIt.utils.Logging;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import com.example.haveIt.entity.models.Items;
@@ -22,6 +23,8 @@ public class OrderProcessingService {
     private OrdersRepository ordersRepository;
     private CustomerRepository customerRepository;
 
+    private static final Logging log = Logging.getLogger();
+
     private final Map<String, Object> itemsLocks = new ConcurrentHashMap<>();
 
     public OrderProcessingService(ItemsRepository itemsRepository, OrdersRepository ordersRepository, CustomerRepository customerRepository) {
@@ -34,37 +37,55 @@ public class OrderProcessingService {
     public void processOrder(String orderId, Order order) throws InterruptedException {
 
         Order pendingOrder = ordersRepository.findByOrderId(orderId);
-        double finalPrice = 0.0;
-        int finalQuantity = 0;
-        List<Items> itemsList = new ArrayList<>();
-        for(Items items: order.getItems())
+        try
         {
-            Object lock = itemsLocks.computeIfAbsent(items.getItemId(),k -> new Object());
-            synchronized (lock){
-                Items itemToBeReturned = new Items();
-                Items item = itemsRepository.findByItemId(items.getItemId());
-                if(item.getQuantity() < items.getQuantity()){
-                    throw new NotEnoughStockForItemException("Not Enough stock For Item is Present");
+            double finalPrice = 0.0;
+            int finalQuantity = 0;
+            List<Items> itemsList = new ArrayList<>();
+            for(Items items: order.getItems())
+            {
+                Object lock = itemsLocks.computeIfAbsent(items.getItemId(),k -> new Object());
+                synchronized (lock){
+                    Items itemToBeReturned = new Items();
+                    Items item = itemsRepository.findByItemId(items.getItemId());
+                    if(item.getQuantity() < items.getQuantity()){
+                        throw new NotEnoughStockForItemException("Not Enough stock For Item is Present");
+                    }
+                    finalPrice = finalPrice + item.getPrice() * items.getQuantity();
+                    finalQuantity = finalQuantity + items.getQuantity();
+                    item.setQuantity(item.getQuantity() - items.getQuantity());
+                    itemToBeReturned.setId(items.getId());
+                    itemToBeReturned.setItemId(items.getItemId());
+                    itemToBeReturned.setQuantity(items.getQuantity());
+                    itemToBeReturned.setPrice(item.getPrice() * items.getQuantity());
+                    itemToBeReturned.setName(items.getName());
+                    itemsRepository.save(item);
+                    itemsList.add(itemToBeReturned);
                 }
-                finalPrice = finalPrice + item.getPrice() * items.getQuantity();
-                finalQuantity = finalQuantity + items.getQuantity();
-                item.setQuantity(item.getQuantity() - items.getQuantity());
-                itemToBeReturned.setId(items.getId());
-                itemToBeReturned.setItemId(items.getItemId());
-                itemToBeReturned.setQuantity(items.getQuantity());
-                itemToBeReturned.setPrice(item.getPrice() * items.getQuantity());
-                itemToBeReturned.setName(items.getName());
-                itemsRepository.save(item);
-                itemsList.add(itemToBeReturned);
             }
+            pendingOrder.setItems(itemsList);
+            pendingOrder.setStatus(OrderStatus.CONFIRMED.toString());
+            pendingOrder.setQuantity(finalQuantity);
+            pendingOrder.setPrice(finalPrice);
+
+            Thread.sleep(5000);
+
+            ordersRepository.save(pendingOrder);
         }
-        pendingOrder.setItems(itemsList);
-        pendingOrder.setStatus(OrderStatus.CONFIRMED.toString());
-        pendingOrder.setQuantity(finalQuantity);
-        pendingOrder.setPrice(finalPrice);
+        catch (InterruptedException interruptedException){
+            Thread.currentThread().interrupt();
+            saveFailedOrderStatus(pendingOrder.getOrderId(),interruptedException);
+        }
+        catch (Exception exception){
+            saveFailedOrderStatus(pendingOrder.getOrderId(),exception);
+        }
+    }
 
-        Thread.sleep(5000);
+    public void saveFailedOrderStatus(String orderId, Exception exception){
 
-        ordersRepository.save(pendingOrder);
+        log.error("Failed to process the order due to exception : " + exception.getMessage());
+        Order failedOrder = ordersRepository.findByOrderId(orderId);
+        failedOrder.setStatus(OrderStatus.FAILED.toString());
+        ordersRepository.save(failedOrder);
     }
 }
